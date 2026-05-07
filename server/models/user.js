@@ -1,37 +1,11 @@
 import mongoose from "mongoose";
+
 const Schema = mongoose.Schema;
 
-// const cartItemSchema = new mongoose.Schema({
-//   productId: {
-//     type: mongoose.Schema.Types.ObjectId,
-//     required: true,
-//     ref: "Product",
-//   },
-//   imageUrl: {
-//     type: String,
-//     default: "",
-//   },
-//   price: {
-//     type: String,
-//     default:"",
-//   },
-//   slug: {
-//     type: String,
-//     default: "",
-//   },
-//   name: {
-//     type: String,
-//     default: "",
-//   },
-//   description:{
-//     type:String,
-//     default:""
-//   },
-//   quantity: {
-//     type: Number,
-//     default: 1,
-//   },
-// }, { _id: false });
+/* -------------------------------------------------------------------------- */
+/*                               CART SCHEMA                                  */
+/* -------------------------------------------------------------------------- */
+
 const cartItemSchema = new mongoose.Schema(
   {
     productId: {
@@ -39,31 +13,37 @@ const cartItemSchema = new mongoose.Schema(
       required: true,
       ref: "Product",
     },
+
     imageUrl: {
       type: String,
       default: "",
     },
+
     price: {
       type: Number,
       default: 0,
     },
+
     slug: {
       type: String,
       default: "",
     },
+
     name: {
       type: String,
       default: "",
     },
+
     description: {
       type: String,
       default: "",
     },
+
     size: {
-      // ✅
       type: String,
       default: "",
     },
+
     quantity: {
       type: Number,
       default: 1,
@@ -72,6 +52,10 @@ const cartItemSchema = new mongoose.Schema(
   { _id: false },
 );
 
+/* -------------------------------------------------------------------------- */
+/*                            WISHLIST SCHEMA                                 */
+/* -------------------------------------------------------------------------- */
+
 const wishlistItemSchema = new mongoose.Schema(
   {
     productId: {
@@ -79,22 +63,27 @@ const wishlistItemSchema = new mongoose.Schema(
       required: true,
       ref: "Product",
     },
+
     imageUrl: {
       type: String,
       default: "",
     },
+
     price: {
-      type: String,
-      default: "",
+      type: Number,
+      default: 0,
     },
+
     slug: {
       type: String,
       default: "",
     },
+
     name: {
       type: String,
       default: "",
     },
+
     description: {
       type: String,
       default: "",
@@ -102,6 +91,67 @@ const wishlistItemSchema = new mongoose.Schema(
   },
   { _id: false },
 );
+
+/* -------------------------------------------------------------------------- */
+/*                          SUBSCRIPTION SCHEMA                               */
+/* -------------------------------------------------------------------------- */
+
+const subscriptionSchema = new mongoose.Schema(
+  {
+    planId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Plan",
+      default: null,
+    },
+
+    planName: {
+      type: String,
+      default: "",
+    },
+
+    billingCycle: {
+      type: String,
+      enum: ["monthly", "yearly", "free"],
+      default: "free",
+    },
+
+    status: {
+      type: String,
+      enum: ["active", "expired", "cancelled"],
+      default: "expired",
+    },
+
+    startDate: {
+      type: Date,
+      default: null,
+    },
+
+    endDate: {
+      type: Date,
+      default: null,
+    },
+
+    remainingDays: {
+      type: Number,
+      default: 0,
+    },
+
+    amountPaid: {
+      type: Number,
+      default: 0,
+    },
+
+    autoRenew: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { _id: false },
+);
+
+/* -------------------------------------------------------------------------- */
+/*                                USER SCHEMA                                 */
+/* -------------------------------------------------------------------------- */
 
 const UserSchema = new Schema(
   {
@@ -113,7 +163,9 @@ const UserSchema = new Schema(
     email: {
       type: String,
       required: true,
-      default: "",
+      unique: true,
+      lowercase: true,
+      trim: true,
     },
 
     password: {
@@ -123,8 +175,8 @@ const UserSchema = new Schema(
 
     phoneno: {
       type: String,
-      required: false,
       unique: true,
+      sparse: true,
     },
 
     image: {
@@ -132,16 +184,57 @@ const UserSchema = new Schema(
       default: "",
     },
 
-    address: {
-      locality: { type: String, default: "" },
-      city: { type: String, default: "" },
-      pinCode: { type: String, default: "" },
-      state: { type: String, default: "" },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
     },
+
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    address: {
+      locality: {
+        type: String,
+        default: "",
+      },
+
+      city: {
+        type: String,
+        default: "",
+      },
+
+      pinCode: {
+        type: String,
+        default: "",
+      },
+
+      state: {
+        type: String,
+        default: "",
+      },
+    },
+
+    /* ----------------------------- SUBSCRIPTION ---------------------------- */
+
+    subscription: {
+      type: subscriptionSchema,
+      default: () => ({}),
+    },
+
+    /* -------------------------------- CART -------------------------------- */
+
+    cart: [cartItemSchema],
+
+    /* ------------------------------ WISHLIST ------------------------------ */
+
+    wishlist: [wishlistItemSchema],
   },
   { timestamps: true },
 );
 
-// const User = mongoose.model("User", UserSchema);
 export const User = mongoose.model("User", UserSchema);
+
 export default User;

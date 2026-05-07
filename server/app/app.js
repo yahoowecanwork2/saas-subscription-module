@@ -8,9 +8,10 @@ import cookieParser from "cookie-parser";
 import dbConnect from "../config/dbConfig.js";
 import adminRoutes from "../routes/adminRoutes.js";
 import userRoutes from "../routes/userRoutes.js";
+import plansRoutes from "../routes/plansRoutes.js";
+import subscriptioRouters from "../routes/subscriptionRoutes.js";
+import paymentRoutes from "../routes/paymentRoutes.js";
 
-// import categoryRoutes from "../routes/categoryRoutes.js";
-// import paymentRoutes from "../routes/paymentRoutes.js";
 // import productRoutes from "../routes/productRoutes.js";
 // import orderRoutes from "../routes/orderRoutes.js";
 // import userRoutes from "../routes/userRoutes.js";
@@ -40,9 +41,9 @@ app.use("/uploads", express.static("uploads"));
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/user", userRoutes);
 
-// app.use("/api/v1/category", categoryRoutes);
-// app.use("/api/v1/payment", paymentRoutes);
-// app.use("/api/v1/product", productRoutes);
+app.use("/api/v1/plan", plansRoutes);
+app.use("/api/v1/payment", paymentRoutes);
+app.use("/api/v1/subscription", subscriptioRouters);
 // app.use("/api/v1/order", orderRoutes);
 // app.use("/api/v1/user", userRoutes);
 
