@@ -3,7 +3,7 @@ const dbConnect = async () => {
   try {
     mongoose.set("strictQuery", false);
     const connected = mongoose.connect(process.env.MONGO_URI, {
-      dbName: "inquiry-cmd-module",
+      dbName: "subscription-module",
     });
     console.log(
       ` subscription modules DB connected successfully ............ ${(await connected).connection.host}`,

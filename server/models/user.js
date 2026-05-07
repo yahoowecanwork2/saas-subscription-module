@@ -116,6 +116,11 @@ const UserSchema = new Schema(
       default: "",
     },
 
+    password: {
+      type: String,
+      required: true,
+    },
+
     phoneno: {
       type: String,
       required: false,
@@ -137,5 +142,6 @@ const UserSchema = new Schema(
   { timestamps: true },
 );
 
-const User = mongoose.model("User", UserSchema);
+// const User = mongoose.model("User", UserSchema);
+export const User = mongoose.model("User", UserSchema);
 export default User;

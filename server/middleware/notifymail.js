@@ -71,3 +71,24 @@ export const sendMailtoUser = async (email, subject, name, message) => {
     html,
   });
 };
+export const sendMailtoAdmin = async (subject, name, message) => {
+  // console.log(email,subject,name,message)
+  const transport = createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    auth: {
+      user: process.env.GMAIL,
+      pass: process.env.PASSWORD,
+    },
+  });
+
+  const html = `<h3>Hello ${name} </h3>
+                <p> ${message} </p>`;
+
+  await transport.sendMail({
+    from: process.env.GMAIL,
+    to: "ny663922@gmail.com",
+    subject,
+    html,
+  });
+};

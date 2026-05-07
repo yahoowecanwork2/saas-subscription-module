@@ -7,6 +7,8 @@ import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import dbConnect from "../config/dbConfig.js";
 import adminRoutes from "../routes/adminRoutes.js";
+import userRoutes from "../routes/userRoutes.js";
+
 // import categoryRoutes from "../routes/categoryRoutes.js";
 // import paymentRoutes from "../routes/paymentRoutes.js";
 // import productRoutes from "../routes/productRoutes.js";
@@ -36,6 +38,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static("uploads"));
 
 app.use("/api/v1/admin", adminRoutes);
+app.use("/api/v1/user", userRoutes);
+
 // app.use("/api/v1/category", categoryRoutes);
 // app.use("/api/v1/payment", paymentRoutes);
 // app.use("/api/v1/product", productRoutes);

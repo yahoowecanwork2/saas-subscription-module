@@ -53,11 +53,7 @@ export const adminRegister = async (req, res) => {
       name,
       otp,
     };
-    await sendRegisterAndResendOtpMail(
-      email,
-      "Study material application",
-      data,
-    );
+    await sendRegisterAndResendOtpMail(email, "subscription module", data);
     res.status(201).json({
       success: true,
       status: "success",
@@ -103,7 +99,7 @@ export const registerOtpResend = async (req, res) => {
     };
     await sendRegisterAndResendOtpMail(
       email,
-      "Study material application",
+      "Subscription module application",
       data,
     );
     res.status(201).json({
@@ -317,7 +313,11 @@ export const adminResendLoginVerifyOtp = async (req, res) => {
       name: existUser.name,
       otp,
     };
-    await loginAndresendOtpEmail(email, "Study material application", data);
+    await loginAndresendOtpEmail(
+      email,
+      "Subscription module application",
+      data,
+    );
     res.status(201).json({
       success: true,
       status: "success",
