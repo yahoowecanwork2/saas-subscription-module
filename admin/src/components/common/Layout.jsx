@@ -7,7 +7,7 @@ import { IoLogOutOutline, IoMenu, IoClose } from "react-icons/io5";
 import { useState } from "react";
 import { MdOutlineAutoAwesome, MdOutlineHistory } from "react-icons/md";
 import { HiOutlineCreditCard } from "react-icons/hi";
-import logo from "../../assets/logo.png";
+// import logo from "../../assets/logo.png";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { clearAuth, clearLoginData, clearUser } from "../../redux/userSlice";
@@ -22,8 +22,8 @@ const Layout = ({ children }) => {
     {
       group: "Overview",
       items: [
-        // { id: 1, name: "Dashboard", path: "/dashboard", icon: MdDashboard },
-        { id: 2, name: "Users", path: "/user", icon: FaUsers },
+        { id: 1, name: "Plans", path: "/plans", icon: MdDashboard },
+        // { id: 2, name: "Users", path: "/user", icon: FaUsers },
       ],
     },
     // {
@@ -149,22 +149,6 @@ const Layout = ({ children }) => {
               <IoLogOutOutline className="text-lg" />
               Sign Out
             </button>
-          </div>
-          {/* Branding / Footer */}
-          <div className="px-3">
-            <div className=" border-t border-gray-50 inline-flex items-center mt-4 pt-4">
-              <p className="text-[12px] font-bold text-gray-800 mb-1">
-                Powered By
-              </p>
-              <Link
-                to={"https://www.arcoders.com"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex flex-col"
-              >
-                <img src={logo} alt="Logo" className="w-20 mb-2" />
-              </Link>
-            </div>
           </div>
         </div>
       </aside>
