@@ -8,8 +8,7 @@ import Plan from "../models/plan.js";
 export const buySubscription = async (req, res) => {
   const { planId } = req.body;
 
-  const user = await User.findById(req.user._id);
-
+  const user = await User.findById(req.id);
   const plan = await Plan.findById(planId);
 
   if (!plan) {
@@ -34,7 +33,8 @@ export const buySubscription = async (req, res) => {
   }
 
   /*........... CALCULATE END DATE ..............................*/
-
+  const finalAmount =
+    plan.discountPrice > 0 ? plan.price - plan.discountPrice : plan.price;
   const endDate = new Date(startDate);
 
   endDate.setDate(endDate.getDate() + plan.durationDays);
@@ -60,7 +60,7 @@ export const buySubscription = async (req, res) => {
 
     remainingDays,
 
-    amountPaid: plan.price,
+    amountPaid: finalAmount,
   };
 
   await user.save();
@@ -84,8 +84,7 @@ export const buySubscription = async (req, res) => {
 
     remainingDays,
 
-    amountPaid: plan.price,
-
+    amountPaid: finalAmount,
     paymentStatus: "paid",
 
     status: "active",
@@ -105,8 +104,7 @@ export const buySubscription = async (req, res) => {
 export const renewSubscription = async (req, res) => {
   const { planId } = req.body;
 
-  const user = await User.findById(req.user._id);
-
+  const user = await User.findById(req.id);
   const plan = await Plan.findById(planId);
 
   const today = new Date();
@@ -120,7 +118,8 @@ export const renewSubscription = async (req, res) => {
   }
 
   /*................................. NEW END DATE........................................ */
-
+  const finalAmount =
+    plan.discountPrice > 0 ? plan.price - plan.discountPrice : plan.price;
   const endDate = new Date(startDate);
 
   endDate.setDate(endDate.getDate() + plan.durationDays);
@@ -144,7 +143,7 @@ export const renewSubscription = async (req, res) => {
 
     remainingDays,
 
-    amountPaid: plan.price,
+    amountPaid: finalAmount,
   };
 
   await user.save();
@@ -185,8 +184,7 @@ export const renewSubscription = async (req, res) => {
 };
 
 export const getMySubscription = async (req, res) => {
-  const user = await User.findById(req.user._id);
-
+  const user = await User.findById(req.id);
   const today = new Date();
 
   if (user.subscription && user.subscription.endDate < today) {
@@ -203,8 +201,7 @@ export const getMySubscription = async (req, res) => {
 };
 
 export const cancelSubscription = async (req, res) => {
-  const user = await User.findById(req.user._id);
-
+  const user = await User.findById(req.id);
   user.subscription.status = "cancelled";
 
   await user.save();
@@ -218,7 +215,7 @@ export const cancelSubscription = async (req, res) => {
 
 export const subscriptionHistory = async (req, res) => {
   const subscriptions = await Subscription.find({
-    userId: req.user._id,
+    userId: req.id,
   })
     .populate("planId")
     .sort({

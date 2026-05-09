@@ -11,6 +11,7 @@ import userRoutes from "../routes/userRoutes.js";
 import plansRoutes from "../routes/plansRoutes.js";
 import subscriptioRouters from "../routes/subscriptionRoutes.js";
 import paymentRoutes from "../routes/paymentRoutes.js";
+import homeRoutes from "../routes/homeRoutes.js";
 
 // import productRoutes from "../routes/productRoutes.js";
 // import orderRoutes from "../routes/orderRoutes.js";
@@ -44,6 +45,7 @@ app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/plan", plansRoutes);
 app.use("/api/v1/payment", paymentRoutes);
 app.use("/api/v1/subscription", subscriptioRouters);
+app.use("/api/v1/home", homeRoutes);
 // app.use("/api/v1/order", orderRoutes);
 // app.use("/api/v1/user", userRoutes);
 

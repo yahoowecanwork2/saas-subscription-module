@@ -1,51 +1,53 @@
-import { Payment } from "../models/Payment.js";
+import Payment from "../models/Payment.js";
 
 import { Subscription } from "../models/Subscription.js";
 
-/* -------------------------------------------------------------------------- */
-/*                             CREATE PAYMENT                                 */
-/* -------------------------------------------------------------------------- */
-
 export const createPayment = async (req, res) => {
-  const { subscriptionId, amount, paymentMethod } = req.body;
+  try {
+    const { subscriptionId, amount, paymentMethod } = req.body;
 
-  /* ---------------------------------------------------------------------- */
-  /*                         CREATE PAYMENT ENTRY                           */
-  /* ---------------------------------------------------------------------- */
+    const payment = await Payment.create({
+      userId: req.id,
 
-  const payment = await Payment.create({
-    userId: req.user._id,
+      subscriptionId,
 
-    subscriptionId,
+      amount,
 
-    amount,
+      paymentGateway: paymentMethod || "manual",
 
-    paymentGateway: paymentMethod || "manual",
+      paymentId: "PAY_" + Date.now(),
 
-    paymentId: "PAY_" + Date.now(),
+      transactionId: "TXN_" + Date.now(),
 
-    transactionId: "TXN_" + Date.now(),
+      status: "success",
 
-    status: "success",
+      paidAt: new Date(),
+    });
 
-    paidAt: new Date(),
-  });
+    // ======================================
+    // UPDATE SUBSCRIPTION
+    // ======================================
 
-  /* ---------------------------------------------------------------------- */
-  /*                    UPDATE SUBSCRIPTION PAYMENT STATUS                  */
-  /* ---------------------------------------------------------------------- */
+    await Subscription.findByIdAndUpdate(subscriptionId, {
+      paymentStatus: "paid",
+    });
 
-  await Subscription.findByIdAndUpdate(subscriptionId, {
-    paymentStatus: "paid",
-  });
+    res.status(201).json({
+      success: true,
 
-  res.status(201).json({
-    success: true,
+      message: "Payment successful",
 
-    message: "Payment successful",
+      payment,
+    });
+  } catch (error) {
+    console.log(error);
 
-    payment,
-  });
+    res.status(500).json({
+      success: false,
+
+      message: "Payment failed",
+    });
+  }
 };
 
 /* -------------------------------------------------------------------------- */
@@ -53,21 +55,28 @@ export const createPayment = async (req, res) => {
 /* -------------------------------------------------------------------------- */
 
 export const paymentHistory = async (req, res) => {
-  const payments = await Payment.find({
-    userId: req.user._id,
-  })
-    .populate("subscriptionId")
-    .sort({
-      createdAt: -1,
+  try {
+    const payments = await Payment.find({
+      userId: req.id,
+    })
+      .populate("subscriptionId")
+      .sort({
+        createdAt: -1,
+      });
+
+    res.status(200).json({
+      success: true,
+      totalPayments: payments.length,
+      payments,
     });
+  } catch (error) {
+    console.log(error);
 
-  res.status(200).json({
-    success: true,
-
-    totalPayments: payments.length,
-
-    payments,
-  });
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch payment history",
+    });
+  }
 };
 
 /* -------------------------------------------------------------------------- */
