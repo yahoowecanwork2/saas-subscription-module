@@ -34,15 +34,18 @@ const Login = () => {
     try {
       setLoading(true);
       const res = await authApi.getHeaderDetail();
+      console.log(res);
 
       if (res.success) {
         toast.success(res?.message);
         dispatch(setAuth(res.success));
         dispatch(setUser(res.user));
         setLoading(false);
-        navigate("/");
+        navigate("/plans");
       }
     } catch (error) {
+      console.log(error);
+
       dispatch(setUser(null));
       dispatch(setAuth(false));
       setLoading(false);
@@ -55,12 +58,16 @@ const Login = () => {
     try {
       setLoading(true);
       const res = await authApi.login(formData);
+      console.log(res);
 
       if (res.success) {
         toast.success(res.message);
         setToken(res?.token);
         setLoading(false);
+        console.log("up");
+
         loadProfile();
+        console.log("down");
       }
     } catch (error) {
       setLoading(false);

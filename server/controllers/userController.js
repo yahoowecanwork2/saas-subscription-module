@@ -235,7 +235,38 @@ export const resetPasswordUser = async (req, res) => {
     });
   }
 };
-
+// only for header
+export const getUserForHeader = async (req, res) => {
+  try {
+    const userId = req.id;
+    const user = await User.findById(userId).select(
+      "-password -address -role -cart -wishlist -suggestedProjects -suggestedProjects -viewedProducts -viewedProjects -allow -seenNotifications -unseenNotifications -studyDetail",
+    );
+    if (!user) {
+      return res.status(404).json({
+        message: "Profile not found",
+        success: false,
+      });
+    }
+    const unSeenNotification = user?.unseenNotifications?.length || 0;
+    const wishlist = user?.wishlist?.length || 0;
+    const cart = user?.cart?.length || 0;
+    return res.status(200).json({
+      success: true,
+      user,
+      message: "User header detail fetched success fully",
+      unSeenNotification,
+      wishlist,
+      cart,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load user",
+    });
+  }
+};
 export const logoutUser = async (req, res) => {
   try {
     return res.status(200).cookie("token", "", { maxAge: 0 }).json({

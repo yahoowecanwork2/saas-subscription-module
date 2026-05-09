@@ -43,7 +43,10 @@ export const authApi = {
     const res = await api.get("/user/check-auth");
     return res.data;
   },
-
+  getHeaderDetail: async () => {
+    const res = await api.get("/user/header-detail");
+    return res.data;
+  },
   updateProfile: async (data) => {
     const res = await api.put("/user/update", data);
     return res.data;

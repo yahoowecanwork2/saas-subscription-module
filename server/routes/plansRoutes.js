@@ -26,6 +26,6 @@ plansRoutes.get("/all", getAllPlans);
 
 plansRoutes.get("/active", getActivePlans);
 
-plansRoutes.get("/:id", getSinglePlan);
+plansRoutes.get("/single/:id", getSinglePlan);
 
 export default plansRoutes;
