@@ -30,51 +30,115 @@ const Login = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // const loadProfile = async () => {
+  //   try {
+  //     setLoading(true);
+  //     const res = await authApi.getHeaderDetail();
+  //     console.log(res);
+
+  //     if (res.success) {
+  //       toast.success(res?.message);
+  //       dispatch(setAuth(res.success));
+  //       dispatch(setUser(res.user));
+  //       setLoading(false);
+  //       navigate("/plans");
+  //     }
+  //   } catch (error) {
+  //     console.log(error);
+
+  //     dispatch(setUser(null));
+  //     dispatch(setAuth(false));
+  //     setLoading(false);
+  //   }
+  // };
+
   const loadProfile = async () => {
     try {
       setLoading(true);
+
       const res = await authApi.getHeaderDetail();
+
       console.log(res);
 
       if (res.success) {
         toast.success(res?.message);
+
         dispatch(setAuth(res.success));
+
         dispatch(setUser(res.user));
-        setLoading(false);
-        navigate("/plans");
+
+        // ✅ CHECK SUBSCRIPTION
+        const subscription = res?.user?.subscription;
+
+        const isActive =
+          subscription &&
+          subscription?.status === "active" &&
+          subscription?.endDate &&
+          new Date(subscription?.endDate) > new Date();
+
+        // ✅ REDIRECT
+        if (isActive) {
+          navigate("/home");
+        } else {
+          navigate("/plans");
+        }
       }
     } catch (error) {
       console.log(error);
 
       dispatch(setUser(null));
+
       dispatch(setAuth(false));
+    } finally {
       setLoading(false);
     }
   };
+  // const handleLogin = async (e) => {
+  //   e.preventDefault();
+
+  //   try {
+  //     setLoading(true);
+  //     const res = await authApi.login(formData);
+  //     console.log(res);
+
+  //     if (res.success) {
+  //       toast.success(res.message);
+  //       setToken(res?.token);
+  //       setLoading(false);
+  //       console.log("up");
+
+  //       loadProfile();
+  //       console.log("down");
+  //     }
+  //   } catch (error) {
+  //     setLoading(false);
+  //     toast.error(error?.response?.data?.message || "Server Error Occurred");
+  //   }
+  // };
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
     try {
       setLoading(true);
+
       const res = await authApi.login(formData);
+
       console.log(res);
 
       if (res.success) {
         toast.success(res.message);
-        setToken(res?.token);
-        setLoading(false);
-        console.log("up");
 
-        loadProfile();
-        console.log("down");
+        setToken(res?.token);
+
+        await loadProfile();
       }
     } catch (error) {
       setLoading(false);
+
       toast.error(error?.response?.data?.message || "Server Error Occurred");
     }
   };
-
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center font-sans">
       <div className="flex w-full max-w-6xl h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden m-4">

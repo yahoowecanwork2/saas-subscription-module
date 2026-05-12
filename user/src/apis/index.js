@@ -3,17 +3,26 @@ import axios from "axios";
 export const api = axios.create({
   baseURL: import.meta.env.VITE_BACKEND_URL,
   timeout: 10000,
-  withCredentials: true, // cookies will still be sent
+  withCredentials: true,
+
+  headers: {
+    "Cache-Control": "no-cache",
+    Pragma: "no-cache",
+    Expires: "0",
+  },
 });
 
 // Request Interceptor
 api.interceptors.request.use(
   (config) => {
-    // Attach token from localStorage
     const token = localStorage.getItem("token");
+
+    console.log("TOKEN =>", token);
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
     return config;
   },
   (error) => Promise.reject(error),
@@ -21,15 +30,13 @@ api.interceptors.request.use(
 
 // Response Interceptor
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    console.log("API RESPONSE =>", res);
+
+    return res;
+  },
   (error) => {
     console.error("API Error:", error);
-
-    if (error.response?.status === 401) {
-      // token invalid, expired, or not sent
-      // handle logout if you want
-      // window.location.href='/auth'
-    }
 
     return Promise.reject(error);
   },

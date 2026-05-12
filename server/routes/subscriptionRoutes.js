@@ -7,12 +7,17 @@ import {
   getMySubscription,
   renewSubscription,
   subscriptionHistory,
+  upgradeSubscription,
 } from "../controllers/subscriptionController.js";
 
 const subscriptioRouters = express.Router();
 
 subscriptioRouters.post("/buy", isAuthenticated, buySubscription);
-
+subscriptioRouters.post(
+  "/upgrade",
+  isAuthenticated,
+  upgradeSubscription,
+);
 subscriptioRouters.post("/renew", isAuthenticated, renewSubscription);
 
 subscriptioRouters.get("/my", isAuthenticated, getMySubscription);

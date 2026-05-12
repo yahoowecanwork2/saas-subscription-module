@@ -7,6 +7,8 @@ import {
   FaCreditCard,
   FaUniversity,
   FaWallet,
+  FaCalendarAlt,
+  FaShieldAlt,
 } from "react-icons/fa";
 
 import { plansApi } from "../../apis/plans";
@@ -30,19 +32,13 @@ export const Plans = () => {
 
   const [showHistory, setShowHistory] = useState(false);
 
-  // =========================================
-  // PAYMENT MODAL
-  // =========================================
-
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const [selectedPlan, setSelectedPlan] = useState(null);
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("manual");
 
-  // =========================================
-  // GET PLANS
-  // =========================================
+  const [upgradeCalculation, setUpgradeCalculation] = useState(null);
 
   const getPlans = async () => {
     try {
@@ -58,10 +54,6 @@ export const Plans = () => {
     }
   };
 
-  // =========================================
-  // GET SUBSCRIPTION
-  // =========================================
-
   const getSubscription = async () => {
     try {
       const res = await subscriptionApi.get();
@@ -72,10 +64,6 @@ export const Plans = () => {
     }
   };
 
-  // =========================================
-  // GET HISTORY
-  // =========================================
-
   const getHistory = async () => {
     try {
       const res = await subscriptionApi.history();
@@ -85,10 +73,6 @@ export const Plans = () => {
       console.log(error);
     }
   };
-
-  // =========================================
-  // GET PAYMENTS
-  // =========================================
 
   const getPayments = async () => {
     try {
@@ -108,10 +92,6 @@ export const Plans = () => {
     getPayments();
   }, []);
 
-  // =========================================
-  // REMAINING DAYS
-  // =========================================
-
   const remainingDays = subscription?.endDate
     ? Math.max(
         0,
@@ -129,11 +109,48 @@ export const Plans = () => {
   const openPaymentModal = (plan) => {
     setSelectedPlan(plan);
 
+    if (
+      subscription?.status === "active" &&
+      subscription?.planId !== plan?._id
+    ) {
+      const currentAmount = subscription?.amountPaid || 0;
+
+      const totalDays =
+        Math.ceil(
+          (new Date(subscription?.endDate) -
+            new Date(subscription?.startDate)) /
+            (1000 * 60 * 60 * 24),
+        ) || 30;
+
+      const perDayPrice = currentAmount / totalDays;
+
+      const remainingAmount = perDayPrice * remainingDays;
+
+      const newPlanPrice =
+        plan?.discountPrice > 0
+          ? plan?.price - plan?.discountPrice
+          : plan?.price;
+
+      const finalPayable = Math.max(
+        0,
+        Math.round(newPlanPrice - remainingAmount),
+      );
+
+      setUpgradeCalculation({
+        currentAmount,
+        remainingAmount: Math.round(remainingAmount),
+        newPlanPrice,
+        finalPayable,
+      });
+    } else {
+      setUpgradeCalculation(null);
+    }
+
     setShowPaymentModal(true);
   };
 
   // =========================================
-  // COMPLETE PAYMENT
+  // HANDLE PAYMENT
   // =========================================
 
   const handleCompletePayment = async () => {
@@ -143,31 +160,42 @@ export const Plans = () => {
       let subRes;
 
       const finalAmount =
-        selectedPlan?.discountPrice > 0
+        upgradeCalculation?.finalPayable ||
+        (selectedPlan?.discountPrice > 0
           ? selectedPlan?.price - selectedPlan?.discountPrice
-          : selectedPlan?.price;
+          : selectedPlan?.price);
 
       // =====================================
-      // CREATE / RENEW SUBSCRIPTION
+      // BUY / RENEW / UPGRADE
       // =====================================
 
       if (subscription?.status === "active") {
-        subRes = await subscriptionApi.renew({
-          planId: selectedPlan?._id,
-        });
+        // SAME PLAN => RENEW
+
+        if (subscription?.planId === selectedPlan?._id) {
+          subRes = await subscriptionApi.renew({
+            planId: selectedPlan?._id,
+          });
+        } else {
+          // DIFFERENT PLAN => UPGRADE
+
+          subRes = await subscriptionApi.upgrade({
+            newPlanId: selectedPlan?._id,
+          });
+        }
       } else {
+        // NEW BUY
+
         subRes = await subscriptionApi.buy({
           planId: selectedPlan?._id,
         });
       }
 
-      console.log("subscription =>", subRes);
-
       // =====================================
-      // CREATE PAYMENT
+      // CREATE PAYMENT ENTRY
       // =====================================
 
-      const paymentRes = await paymentApi.create({
+      await paymentApi.create({
         subscriptionId: subRes?.subscription?._id,
 
         amount: finalAmount,
@@ -175,20 +203,10 @@ export const Plans = () => {
         paymentMethod: selectedPaymentMethod,
       });
 
-      console.log("payment =>", paymentRes);
-
-      // =====================================
-      // SAVE
-      // =====================================
-
       localStorage.setItem(
         "subscription",
         JSON.stringify(subRes?.subscription),
       );
-
-      // =====================================
-      // REFRESH
-      // =====================================
 
       await getSubscription();
 
@@ -196,27 +214,17 @@ export const Plans = () => {
 
       await getPayments();
 
-      // =====================================
-      // CLOSE MODAL
-      // =====================================
-
       setShowPaymentModal(false);
 
       setSelectedPlan(null);
 
-      // =====================================
-      // SUCCESS
-      // =====================================
+      setUpgradeCalculation(null);
 
       alert(
         subscription?.status === "active"
-          ? "Subscription Renewed Successfully"
+          ? "Subscription Updated Successfully"
           : "Payment Successful & Subscription Activated",
       );
-
-      // =====================================
-      // REDIRECT
-      // =====================================
 
       navigate("/home");
     } catch (error) {
@@ -229,180 +237,117 @@ export const Plans = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-14 px-5">
-      {/* ===================================== */}
-      {/* HEADING */}
-      {/* ===================================== */}
+    <div className="min-h-screen bg-[#F8FAFC] py-16 px-6 font-sans text-slate-900">
+      {/* HEADER */}
 
-      <div className="text-center mb-12">
-        <h1 className="text-5xl font-bold text-gray-900">Choose Your Plan</h1>
+      <div className="max-w-4xl mx-auto text-center mb-16">
+        <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4 bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+          Upgrade Your Experience
+        </h1>
 
-        <p className="text-gray-500 mt-4 text-lg">
-          Flexible pricing for every business
+        <p className="text-slate-500 text-lg md:text-xl max-w-2xl mx-auto">
+          Scale your business with our professional plans.
         </p>
       </div>
 
-      {/* ===================================== */}
-      {/* SUBSCRIPTION STATUS */}
-      {/* ===================================== */}
+      {/* SUBSCRIPTION CARD */}
 
-      <div className="max-w-6xl mx-auto mb-10">
-        <div className="bg-white rounded-3xl shadow-lg p-7 border">
+      <div className="max-w-6xl mx-auto mb-12">
+        <div className="bg-white rounded-[2rem] shadow-xl p-8 border border-slate-100">
           {subscription && subscription?.status === "active" ? (
-            <div className="flex flex-col lg:flex-row justify-between gap-8 items-center">
-              <div>
-                <div className="flex items-center gap-3">
-                  <FaCrown className="text-yellow-500 text-3xl" />
-
-                  <h2 className="text-3xl font-bold text-green-600">
-                    Active Subscription
-                  </h2>
+            <div className="flex flex-col lg:flex-row justify-between items-center gap-8">
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <div className="w-20 h-20 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500">
+                  <FaCrown className="text-4xl" />
                 </div>
 
-                <div className="mt-5 space-y-2">
-                  <p className="text-lg">
-                    Plan :
-                    <span className="font-bold ml-2">
-                      {subscription?.planName}
-                    </span>
-                  </p>
+                <div>
+                  <h2 className="text-3xl font-bold">
+                    {subscription?.planName}
+                  </h2>
 
-                  <p className="text-lg">
-                    Remaining Days :
-                    <span className="font-bold text-blue-600 ml-2">
-                      {remainingDays} Days
-                    </span>
-                  </p>
+                  <div className="flex flex-wrap gap-4 mt-3 text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <FaCalendarAlt />
 
-                  <p className="text-lg">
-                    Status :
-                    <span className="font-bold text-green-600 capitalize ml-2">
-                      {subscription?.status}
-                    </span>
-                  </p>
-
-                  <p className="text-lg">
-                    Expire :
-                    <span className="font-bold ml-2">
                       {new Date(subscription?.endDate).toLocaleDateString()}
                     </span>
-                  </p>
+
+                    <span className="flex items-center gap-1">
+                      <FaShieldAlt />
+
+                      {subscription?.status}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <button
-                onClick={async () => {
-                  setShowHistory(!showHistory);
+              <div className="text-center">
+                <p className="text-sm text-slate-400">Remaining</p>
 
-                  await getHistory();
+                <p className="text-4xl font-bold text-indigo-600">
+                  {remainingDays} Days
+                </p>
 
-                  await getPayments();
-                }}
-                className="bg-black text-white px-6 py-4 rounded-2xl flex items-center gap-3"
-              >
-                <FaHistory />
+                <button
+                  onClick={async () => {
+                    setShowHistory(!showHistory);
 
-                {showHistory ? "Hide History" : "View History"}
-              </button>
+                    await getHistory();
+
+                    await getPayments();
+                  }}
+                  className="mt-4 bg-slate-900 text-white px-6 py-3 rounded-xl flex items-center gap-2"
+                >
+                  <FaHistory />
+
+                  {showHistory ? "Close History" : "View History"}
+                </button>
+              </div>
             </div>
           ) : (
-            <div className="flex justify-between items-center flex-col lg:flex-row gap-5">
+            <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-3xl font-bold text-red-500">
-                  No Active Subscription
-                </h2>
+                <h2 className="text-3xl font-bold">No Active Subscription</h2>
 
-                <p className="text-gray-500 mt-3">
-                  Buy a plan to unlock premium features
-                </p>
+                <p className="text-slate-500 mt-2">Choose your first plan</p>
               </div>
-
-              <button
-                onClick={async () => {
-                  setShowHistory(!showHistory);
-
-                  await getHistory();
-
-                  await getPayments();
-                }}
-                className="bg-black text-white px-6 py-4 rounded-2xl flex items-center gap-3"
-              >
-                <FaHistory />
-
-                {showHistory ? "Hide History" : "View History"}
-              </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* ===================================== */}
       {/* HISTORY */}
-      {/* ===================================== */}
 
       {showHistory && (
-        <div className="max-w-6xl mx-auto mb-12">
-          <div className="bg-white rounded-3xl shadow-lg p-7 border">
-            <h2 className="text-3xl font-bold mb-8">Subscription History</h2>
+        <div className="max-w-6xl mx-auto mb-16">
+          <div className="bg-white rounded-[2rem] shadow-xl p-8">
+            <h2 className="text-2xl font-bold mb-8">Transaction History</h2>
 
             {history?.length === 0 ? (
-              <p>No History Found</p>
+              <div>No history found</div>
             ) : (
-              <div className="space-y-5">
+              <div className="grid gap-4">
                 {history?.map((item) => {
                   const payment = payments?.find(
                     (pay) => pay?.subscriptionId?._id === item?._id,
                   );
 
                   return (
-                    <div key={item?._id} className="border rounded-2xl p-5">
-                      <div className="flex flex-col lg:flex-row justify-between gap-5">
-                        <div>
-                          <h2 className="text-2xl font-bold">
-                            {item?.planName}
-                          </h2>
+                    <div
+                      key={item?._id}
+                      className="border rounded-2xl p-6 flex justify-between"
+                    >
+                      <div>
+                        <h3 className="font-bold text-xl">{item?.planName}</h3>
 
-                          <p className="mt-2 capitalize">
-                            {item?.billingCycle}
-                          </p>
+                        <p className="text-slate-500">₹{item?.amountPaid}</p>
+                      </div>
 
-                          <p className="mt-2">
-                            Duration : {item?.totalDays} Days
-                          </p>
-
-                          <p className="mt-2">
-                            Start :{" "}
-                            {new Date(item?.startDate).toLocaleDateString()}
-                          </p>
-
-                          <p className="mt-2">
-                            End : {new Date(item?.endDate).toLocaleDateString()}
-                          </p>
-                        </div>
-
-                        <div className="space-y-2">
-                          <p className="text-2xl font-bold text-green-600">
-                            ₹{item?.amountPaid}
-                          </p>
-
-                          <p className="capitalize text-blue-600 font-bold">
-                            {item?.status}
-                          </p>
-
-                          <p>
-                            Payment :
-                            <span className="ml-2 font-semibold capitalize">
-                              {payment?.status || "success"}
-                            </span>
-                          </p>
-
-                          <p>
-                            Method :
-                            <span className="ml-2 font-semibold capitalize">
-                              {payment?.paymentGateway || "manual"}
-                            </span>
-                          </p>
-                        </div>
+                      <div>
+                        <span className="text-sm">
+                          {payment?.status || "success"}
+                        </span>
                       </div>
                     </div>
                   );
@@ -413,12 +358,10 @@ export const Plans = () => {
         </div>
       )}
 
-      {/* ===================================== */}
       {/* PLANS */}
-      {/* ===================================== */}
 
       {loading ? (
-        <div className="text-center text-2xl font-bold">Loading Plans...</div>
+        <div className="flex justify-center py-20">Loading...</div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
           {plans?.map((plan) => {
@@ -427,82 +370,44 @@ export const Plans = () => {
                 ? plan?.price - plan?.discountPrice
                 : plan?.price;
 
-            const discountPercentage =
-              plan?.discountPrice > 0
-                ? Math.round((plan?.discountPrice / plan?.price) * 100)
-                : 0;
-
             return (
               <div
                 key={plan?._id}
-                className="bg-white rounded-3xl shadow-lg p-8 border hover:shadow-2xl transition relative"
+                className="bg-white rounded-[2rem] p-8 border"
               >
-                {discountPercentage > 0 && (
-                  <div className="absolute top-5 right-5 bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-bold">
-                    {discountPercentage}% OFF
-                  </div>
-                )}
+                <div className="mb-8">
+                  <h2 className="text-2xl font-bold">{plan?.name}</h2>
 
-                <div className="mb-6">
-                  <h2 className="text-3xl font-bold">{plan?.name}</h2>
-
-                  <p className="text-gray-500 mt-3">{plan?.description}</p>
+                  <p className="text-slate-500 mt-2">{plan?.description}</p>
                 </div>
 
-                {/* PRICE */}
+                <div className="mb-8">
+                  <h1 className="text-5xl font-black">₹{finalPrice}</h1>
 
-                <div className="mb-7">
-                  <div className="flex items-end gap-3 flex-wrap">
-                    <h1 className="text-5xl font-bold">₹{finalPrice}</h1>
-
-                    {plan?.discountPrice > 0 && (
-                      <p className="line-through text-gray-400 text-2xl">
-                        ₹{plan?.price}
-                      </p>
-                    )}
-                  </div>
-
-                  <span className="inline-block mt-4 bg-black text-white px-4 py-2 rounded-full text-sm capitalize">
+                  <p className="text-slate-400 mt-2 uppercase text-sm">
                     {plan?.billingCycle}
-                  </span>
-                </div>
-
-                {/* DETAILS */}
-
-                <div className="mb-7 space-y-2">
-                  <p>
-                    Duration :
-                    <span className="font-bold ml-2">
-                      {plan?.durationDays} Days
-                    </span>
                   </p>
-
-                  {plan?.isFreeTrial && (
-                    <p className="text-green-600 font-semibold">
-                      {plan?.trialDays} Days Free Trial
-                    </p>
-                  )}
                 </div>
 
-                {/* FEATURES */}
-
-                <div className="space-y-4 mb-8">
+                <div className="space-y-3 mb-10">
                   {plan?.features?.map((feature, index) => (
                     <div key={index} className="flex items-center gap-3">
-                      <FaCheck className="text-green-500" />
+                      <FaCheck className="text-green-600" />
 
                       <span>{feature}</span>
                     </div>
                   ))}
                 </div>
 
-                {/* BUTTON */}
-
                 <button
                   onClick={() => openPaymentModal(plan)}
-                  className="w-full bg-black hover:bg-gray-800 text-white py-4 rounded-2xl font-bold"
+                  className="w-full py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
                 >
-                  {subscription?.status === "active" ? "Renew Plan" : "Buy Now"}
+                  {subscription?.status === "active"
+                    ? subscription?.planId === plan?._id
+                      ? "Renew Plan"
+                      : "Upgrade Plan"
+                    : "Get Started"}
                 </button>
               </div>
             );
@@ -510,36 +415,34 @@ export const Plans = () => {
         </div>
       )}
 
-      {/* ===================================== */}
       {/* PAYMENT MODAL */}
-      {/* ===================================== */}
 
       {showPaymentModal && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 px-4">
-          <div className="bg-white rounded-3xl w-full max-w-lg p-8 relative">
-            {/* CLOSE */}
-
+        <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 px-4">
+          <div className="bg-white rounded-[2rem] w-full max-w-lg p-8 relative">
             <button
               onClick={() => setShowPaymentModal(false)}
-              className="absolute top-5 right-5 text-gray-500 text-xl"
+              className="absolute top-6 right-6"
             >
-              <FaTimes />
+              <FaTimes size={20} />
             </button>
 
-            {/* TITLE */}
+            <h2 className="text-3xl font-bold mb-2">Checkout</h2>
 
-            <h2 className="text-3xl font-bold mb-2">Select Payment Method</h2>
-
-            <p className="text-gray-500 mb-8">Complete your payment securely</p>
+            <p className="text-slate-500 mb-8">Complete your payment</p>
 
             {/* PLAN */}
 
-            <div className="bg-gray-100 rounded-2xl p-5 mb-6">
-              <h3 className="text-2xl font-bold">{selectedPlan?.name}</h3>
+            <div className="bg-indigo-50 rounded-2xl p-6 mb-6 flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-xl">{selectedPlan?.name}</h3>
 
-              <p className="text-gray-500 mt-2">{selectedPlan?.description}</p>
+                <p className="text-slate-500 text-sm">
+                  {selectedPlan?.billingCycle}
+                </p>
+              </div>
 
-              <h1 className="text-4xl font-bold mt-4">
+              <h1 className="text-3xl font-black">
                 ₹
                 {selectedPlan?.discountPrice > 0
                   ? selectedPlan?.price - selectedPlan?.discountPrice
@@ -547,77 +450,74 @@ export const Plans = () => {
               </h1>
             </div>
 
-            {/* METHODS */}
+            {/* UPGRADE CALCULATION */}
 
-            <div className="space-y-4">
-              {/* MANUAL */}
+            {upgradeCalculation && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6">
+                <h3 className="font-bold text-amber-800 mb-4">
+                  Upgrade Adjustment
+                </h3>
 
-              <div
-                onClick={() => setSelectedPaymentMethod("manual")}
-                className={`border rounded-2xl p-5 cursor-pointer transition ${
-                  selectedPaymentMethod === "manual"
-                    ? "border-black bg-gray-100"
-                    : ""
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <FaWallet className="text-2xl" />
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Current Plan Credit</span>
 
-                  <div>
-                    <h3 className="font-bold text-lg">Manual Payment</h3>
+                    <span className="font-semibold text-green-600">
+                      - ₹{upgradeCalculation?.remainingAmount}
+                    </span>
+                  </div>
 
-                    <p className="text-gray-500 text-sm">
-                      Cash / Offline Payment
-                    </p>
+                  <div className="flex justify-between">
+                    <span>New Plan Price</span>
+
+                    <span>₹{upgradeCalculation?.newPlanPrice}</span>
+                  </div>
+
+                  <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg">
+                    <span>Final Payable</span>
+
+                    <span className="text-indigo-600">
+                      ₹{upgradeCalculation?.finalPayable}
+                    </span>
                   </div>
                 </div>
               </div>
+            )}
 
-              {/* RAZORPAY */}
+            {/* PAYMENT METHODS */}
 
-              <div
-                onClick={() => setSelectedPaymentMethod("razorpay")}
-                className={`border rounded-2xl p-5 cursor-pointer transition ${
-                  selectedPaymentMethod === "razorpay"
-                    ? "border-black bg-gray-100"
-                    : ""
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <FaCreditCard className="text-2xl" />
+            <div className="space-y-3">
+              {[
+                {
+                  id: "manual",
+                  icon: FaWallet,
+                  title: "Manual",
+                },
+                {
+                  id: "razorpay",
+                  icon: FaCreditCard,
+                  title: "Razorpay",
+                },
+                {
+                  id: "paypal",
+                  icon: FaUniversity,
+                  title: "Paypal",
+                },
+              ].map((method) => (
+                <div
+                  key={method.id}
+                  onClick={() => setSelectedPaymentMethod(method.id)}
+                  className={`border-2 rounded-2xl p-4 flex items-center gap-4 cursor-pointer ${
+                    selectedPaymentMethod === method.id
+                      ? "border-indigo-600 bg-indigo-50"
+                      : "border-slate-100"
+                  }`}
+                >
+                  <method.icon />
 
-                  <div>
-                    <h3 className="font-bold text-lg">Razorpay</h3>
-
-                    <p className="text-gray-500 text-sm">
-                      UPI / Card / Net Banking
-                    </p>
-                  </div>
+                  <span className="font-medium">{method.title}</span>
                 </div>
-              </div>
-
-              {/* BANK */}
-
-              <div
-                onClick={() => setSelectedPaymentMethod("paypal")}
-                className={`border rounded-2xl p-5 cursor-pointer transition ${
-                  selectedPaymentMethod === "paypal"
-                    ? "border-black bg-gray-100"
-                    : ""
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <FaUniversity className="text-2xl" />
-
-                  <div>
-                    <h3 className="font-bold text-lg">Paypal</h3>
-
-                    <p className="text-gray-500 text-sm">
-                      International Payment
-                    </p>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
 
             {/* PAY BUTTON */}
@@ -625,11 +525,9 @@ export const Plans = () => {
             <button
               disabled={buyLoading}
               onClick={handleCompletePayment}
-              className="w-full bg-black text-white py-4 rounded-2xl font-bold mt-8"
+              className="w-full bg-slate-900 hover:bg-indigo-600 text-white py-5 rounded-2xl font-bold mt-8"
             >
-              {buyLoading
-                ? "Processing Payment..."
-                : `Pay Now with ${selectedPaymentMethod}`}
+              {buyLoading ? "Processing..." : `Confirm & Pay`}
             </button>
           </div>
         </div>
