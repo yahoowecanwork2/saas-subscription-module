@@ -19,10 +19,10 @@ import homeRoutes from "../routes/homeRoutes.js";
 
 dbConnect();
 const app = express();
-// export const instance = new Razorpay({
-//   key_id: process.env.RAZORPAY_KEY,
-//   key_secret: process.env.RAZORPAY_SECRET,
-// });
+export const instance = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY,
+  key_secret: process.env.RAZORPAY_SECRET,
+});
 
 const allowedOrigins = ["http://localhost:5173", "http://localhost:5174"];
 

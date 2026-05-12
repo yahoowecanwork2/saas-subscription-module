@@ -14,12 +14,14 @@ import {
 import { plansApi } from "../../apis/plans";
 import { subscriptionApi } from "../../apis/subscription";
 import { paymentApi } from "../../apis/payment";
+
 import { useNavigate } from "react-router-dom";
 
 export const Plans = () => {
   const navigate = useNavigate();
 
   const [plans, setPlans] = useState([]);
+
   const [loading, setLoading] = useState(false);
 
   const [buyLoading, setBuyLoading] = useState(false);
@@ -36,7 +38,8 @@ export const Plans = () => {
 
   const [selectedPlan, setSelectedPlan] = useState(null);
 
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("manual");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] =
+    useState("razorpay");
 
   const [upgradeCalculation, setUpgradeCalculation] = useState(null);
 
@@ -102,10 +105,6 @@ export const Plans = () => {
       )
     : 0;
 
-  // =========================================
-  // OPEN PAYMENT MODAL
-  // =========================================
-
   const openPaymentModal = (plan) => {
     setSelectedPlan(plan);
 
@@ -138,8 +137,11 @@ export const Plans = () => {
 
       setUpgradeCalculation({
         currentAmount,
+
         remainingAmount: Math.round(remainingAmount),
+
         newPlanPrice,
+
         finalPayable,
       });
     } else {
@@ -148,10 +150,6 @@ export const Plans = () => {
 
     setShowPaymentModal(true);
   };
-
-  // =========================================
-  // HANDLE PAYMENT
-  // =========================================
 
   const handleCompletePayment = async () => {
     try {
@@ -164,10 +162,6 @@ export const Plans = () => {
         (selectedPlan?.discountPrice > 0
           ? selectedPlan?.price - selectedPlan?.discountPrice
           : selectedPlan?.price);
-
-      // =====================================
-      // BUY / RENEW / UPGRADE
-      // =====================================
 
       if (subscription?.status === "active") {
         // SAME PLAN => RENEW
@@ -191,42 +185,106 @@ export const Plans = () => {
         });
       }
 
-      // =====================================
-      // CREATE PAYMENT ENTRY
-      // =====================================
+      if (selectedPaymentMethod === "manual") {
+        await paymentApi.verify({
+          razorpay_order_id: "MANUAL_ORDER",
 
-      await paymentApi.create({
-        subscriptionId: subRes?.subscription?._id,
+          razorpay_payment_id: "MANUAL_PAYMENT",
 
+          razorpay_signature: "MANUAL_SIGNATURE",
+
+          subscriptionId: subRes?.subscription?._id,
+
+          amount: finalAmount,
+        });
+
+        alert("Subscription Activated Successfully");
+
+        await getSubscription();
+
+        await getHistory();
+
+        await getPayments();
+
+        setShowPaymentModal(false);
+
+        return;
+      }
+
+      const orderRes = await paymentApi.createOrder({
         amount: finalAmount,
-
-        paymentMethod: selectedPaymentMethod,
       });
 
-      localStorage.setItem(
-        "subscription",
-        JSON.stringify(subRes?.subscription),
-      );
+      const order = orderRes?.order;
 
-      await getSubscription();
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY,
 
-      await getHistory();
+        amount: order.amount,
 
-      await getPayments();
+        currency: order.currency,
 
-      setShowPaymentModal(false);
+        name: "Arcoders",
 
-      setSelectedPlan(null);
+        description: "Subscription Payment",
 
-      setUpgradeCalculation(null);
+        order_id: order.id,
 
-      alert(
-        subscription?.status === "active"
-          ? "Subscription Updated Successfully"
-          : "Payment Successful & Subscription Activated",
-      );
+        handler: async function (response) {
+          try {
+            await paymentApi.verify({
+              razorpay_order_id: response.razorpay_order_id,
 
-      navigate("/home");
+              razorpay_payment_id: response.razorpay_payment_id,
+
+              razorpay_signature: response.razorpay_signature,
+
+              subscriptionId: subRes?.subscription?._id,
+
+              amount: finalAmount,
+            });
+
+            await getSubscription();
+
+            await getHistory();
+
+            await getPayments();
+
+            localStorage.setItem(
+              "subscription",
+              JSON.stringify(subRes?.subscription),
+            );
+
+            setShowPaymentModal(false);
+
+            setSelectedPlan(null);
+
+            setUpgradeCalculation(null);
+
+            alert("Payment Successful & Subscription Activated");
+
+            navigate("/home");
+          } catch (error) {
+            console.log(error);
+
+            alert("Payment verification failed");
+          }
+        },
+
+        prefill: {
+          name: "User",
+
+          email: "user@gmail.com",
+        },
+
+        theme: {
+          color: "#4F46E5",
+        },
+      };
+
+      const razor = new window.Razorpay(options);
+
+      razor.open();
     } catch (error) {
       console.log(error);
 
@@ -237,26 +295,26 @@ export const Plans = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] py-16 px-6 font-sans text-slate-900">
+    <div className="min-h-screen bg-[#F8FAFC] py-16 px-6">
       {/* HEADER */}
 
       <div className="max-w-4xl mx-auto text-center mb-16">
-        <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4 bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+        <h1 className="text-5xl font-black bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
           Upgrade Your Experience
         </h1>
 
-        <p className="text-slate-500 text-lg md:text-xl max-w-2xl mx-auto">
-          Scale your business with our professional plans.
+        <p className="text-slate-500 mt-4 text-lg">
+          Scale your business with powerful subscription plans.
         </p>
       </div>
 
-      {/* SUBSCRIPTION CARD */}
+      {/* ACTIVE SUBSCRIPTION */}
 
       <div className="max-w-6xl mx-auto mb-12">
-        <div className="bg-white rounded-[2rem] shadow-xl p-8 border border-slate-100">
-          {subscription && subscription?.status === "active" ? (
+        <div className="bg-white rounded-[2rem] shadow-xl p-8 border">
+          {subscription?.status === "active" ? (
             <div className="flex flex-col lg:flex-row justify-between items-center gap-8">
-              <div className="flex flex-col md:flex-row items-center gap-6">
+              <div className="flex items-center gap-6">
                 <div className="w-20 h-20 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500">
                   <FaCrown className="text-4xl" />
                 </div>
@@ -267,13 +325,13 @@ export const Plans = () => {
                   </h2>
 
                   <div className="flex flex-wrap gap-4 mt-3 text-slate-500">
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-2">
                       <FaCalendarAlt />
 
                       {new Date(subscription?.endDate).toLocaleDateString()}
                     </span>
 
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-2">
                       <FaShieldAlt />
 
                       {subscription?.status}
@@ -283,11 +341,11 @@ export const Plans = () => {
               </div>
 
               <div className="text-center">
-                <p className="text-sm text-slate-400">Remaining</p>
+                <p className="text-slate-400 text-sm">Remaining Days</p>
 
-                <p className="text-4xl font-bold text-indigo-600">
-                  {remainingDays} Days
-                </p>
+                <h1 className="text-5xl font-black text-indigo-600">
+                  {remainingDays}
+                </h1>
 
                 <button
                   onClick={async () => {
@@ -306,12 +364,12 @@ export const Plans = () => {
               </div>
             </div>
           ) : (
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-3xl font-bold">No Active Subscription</h2>
+            <div>
+              <h2 className="text-3xl font-bold">No Active Subscription</h2>
 
-                <p className="text-slate-500 mt-2">Choose your first plan</p>
-              </div>
+              <p className="text-slate-500 mt-2">
+                Choose your first subscription plan.
+              </p>
             </div>
           )}
         </div>
@@ -339,7 +397,7 @@ export const Plans = () => {
                       className="border rounded-2xl p-6 flex justify-between"
                     >
                       <div>
-                        <h3 className="font-bold text-xl">{item?.planName}</h3>
+                        <h3 className="text-xl font-bold">{item?.planName}</h3>
 
                         <p className="text-slate-500">₹{item?.amountPaid}</p>
                       </div>
@@ -361,7 +419,7 @@ export const Plans = () => {
       {/* PLANS */}
 
       {loading ? (
-        <div className="flex justify-center py-20">Loading...</div>
+        <div className="text-center py-20">Loading...</div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
           {plans?.map((plan) => {
@@ -373,7 +431,7 @@ export const Plans = () => {
             return (
               <div
                 key={plan?._id}
-                className="bg-white rounded-[2rem] p-8 border"
+                className="bg-white rounded-[2rem] p-8 border shadow-lg"
               >
                 <div className="mb-8">
                   <h2 className="text-2xl font-bold">{plan?.name}</h2>
@@ -384,7 +442,7 @@ export const Plans = () => {
                 <div className="mb-8">
                   <h1 className="text-5xl font-black">₹{finalPrice}</h1>
 
-                  <p className="text-slate-400 mt-2 uppercase text-sm">
+                  <p className="text-slate-400 uppercase text-sm mt-2">
                     {plan?.billingCycle}
                   </p>
                 </div>
@@ -444,13 +502,14 @@ export const Plans = () => {
 
               <h1 className="text-3xl font-black">
                 ₹
-                {selectedPlan?.discountPrice > 0
-                  ? selectedPlan?.price - selectedPlan?.discountPrice
-                  : selectedPlan?.price}
+                {upgradeCalculation?.finalPayable ||
+                  (selectedPlan?.discountPrice > 0
+                    ? selectedPlan?.price - selectedPlan?.discountPrice
+                    : selectedPlan?.price)}
               </h1>
             </div>
 
-            {/* UPGRADE CALCULATION */}
+            {/* UPGRADE */}
 
             {upgradeCalculation && (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6">
@@ -462,7 +521,7 @@ export const Plans = () => {
                   <div className="flex justify-between">
                     <span>Current Plan Credit</span>
 
-                    <span className="font-semibold text-green-600">
+                    <span className="text-green-600 font-semibold">
                       - ₹{upgradeCalculation?.remainingAmount}
                     </span>
                   </div>
@@ -490,17 +549,25 @@ export const Plans = () => {
               {[
                 {
                   id: "manual",
+
                   icon: FaWallet,
+
                   title: "Manual",
                 },
+
                 {
                   id: "razorpay",
+
                   icon: FaCreditCard,
+
                   title: "Razorpay",
                 },
+
                 {
                   id: "paypal",
+
                   icon: FaUniversity,
+
                   title: "Paypal",
                 },
               ].map((method) => (
@@ -527,7 +594,7 @@ export const Plans = () => {
               onClick={handleCompletePayment}
               className="w-full bg-slate-900 hover:bg-indigo-600 text-white py-5 rounded-2xl font-bold mt-8"
             >
-              {buyLoading ? "Processing..." : `Confirm & Pay`}
+              {buyLoading ? "Processing..." : "Confirm & Pay"}
             </button>
           </div>
         </div>
